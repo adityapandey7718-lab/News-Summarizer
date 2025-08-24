@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyze Article - News Summarizer & Bias Detector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #7c3aed;
+            --secondary-color: #5b21b6;
+            --accent-color: #06d6a0;
+            --text-dark: #1a1a2e;
+            --text-light: #64748b;
+            --bg-light: #f1f5f9;
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #06d6a0 100%);
+            --gradient-accent: linear-gradient(135deg, #06d6a0 0%, #118d57 100%);
+            --sidebar-width: 280px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 2rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            color: var(--text-light);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover {
+            background: var(--bg-light);
+            color: var(--primary-color);
+            border-left-color: var(--primary-color);
+        }
+
+        .nav-link.active {
+            background: var(--bg-light);
+            color: var(--primary-color);
+            border-left-color: var(--primary-color);
+        }
+
+        .nav-icon {
+            margin-right: 1rem;
+            font-size: 1.2rem;
+            width: 20px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+        }
+
+        /* Top Header */
+        .top-header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .logout-btn {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            color: var(--error-color);
+        }
+
+        /* Page Content */
+        .page-content {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Hero Analysis Section */
+        .analysis-hero {
+            background: var(--gradient-primary);
+            border-radius: 25px;
+            padding: 3rem;
+            margin-bottom: 3rem;
+            color: white;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analysis-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(30%, -30%);
+        }
+
+        .analysis-hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            transform: translate(-30%, 30%);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        /* Input Section */
+        .input-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .input-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .input-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .input-subtitle {
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+
+        .url-input-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .url-input-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 1.5rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+        }
+
+        .url-input::placeholder {
+            color: var(--text-light);
+        }
+
+        .analyze-btn {
+            padding: 1.5rem 2.5rem;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analyze-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .analyze-btn:hover::before {
+            left: 100%;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(124, 58, 237, 0.3);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Sample URLs */
+        .sample-urls {
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        .sample-title {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+
+        .sample-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .sample-link {
+            padding: 0.5rem 1rem;
+            background: var(--bg-light);
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .sample-link:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Results Section */
+        .results-section {
+            margin-top: 2rem;
+        }
+
+        .results-container {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            text-align: center;
+            position: relative;
+        }
+
+        .results-container.loading {
+            background: var(--gradient-primary);
+            color: white;
+        }
+
+        .results-container.has-results {
+            align-items: flex-start;
+            justify-content: flex-start;
+            text-align: left;
+            padding: 3rem;
+        }
+
+        .empty-state {
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+        }
+
+        .empty-subtitle {
+            font-size: 1rem;
+            color: var(--text-light);
+        }
+
+        /* Loading State */
+        .loading-content {
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 2rem;
+        }
+
+        .loading-text {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .loading-subtitle {
+            opacity: 0.8;
+        }
+
+        /* Results Display */
+        .results-grid {
+            display: grid;
+            gap: 2.5rem;
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-icon {
+            font-size: 2rem;
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .result-content {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: var(--text-dark);
+        }
+
+        .bias-analysis {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .bias-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .bias-low {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success-color);
+            border: 2px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .bias-medium {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning-color);
+            border: 2px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .bias-high {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error-color);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .bias-score {
+            background: var(--bg-light);
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .key-points-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .key-points-list li {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+            position: relative;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .key-points-list li::before {
+            content: '🔹';
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        /* Action Buttons */
+        .result-actions {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 1rem 2rem;
+            border: 2px solid var(--primary-color);
+            border-radius: 25px;
+            background: transparent;
+            color: var(--primary-color);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .action-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .action-btn.primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            background: var(--secondary-color);
+        }
+
+        /* Animations */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                color: var(--text-dark);
+                cursor: pointer;
+            }
+            .sidebar { width: 250px; background-color: #1f2937; min-height: 100vh; }
+            .sidebar-header { padding: 1rem; font-size: 1.2rem; font-weight: bold; color: white; }
+            .sidebar-nav { margin-top: 1rem; }
+            .nav-item { margin-bottom: 0.5rem; }
+            .nav-link { display: flex; align-items: center; padding: 0.75rem 1rem; color: #d1d5db; border-radius: 0.375rem; text-decoration: none; }
+            .nav-link:hover { background-color: #374151; color: white; }
+            /* This next rule should apply through Django's active context only */
+            /* .nav-link.active { background-color: #111827; color: white; } */
+
+
+            .page-content {
+                padding: 1rem;
+            }
+
+            .analysis-hero {
+                padding: 2rem;
+            }
+
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            .input-section {
+                padding: 2rem;
+            }
+
+            .url-input-group {
+                flex-direction: column;
+            }
+
+            .sample-links {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .results-container.has-results {
+                padding: 2rem;
+            }
+
+            .result-actions {
+                flex-direction: column;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-menu-btn {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="logo">NewsBias Detector</div>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-item">
+            <a href="{% url 'dashboard' %}"
+               class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <span class="nav-icon">📊</span>
+                Dashboard
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{% url 'ai_page' %}"
+               class="nav-link {% if request.resolver_match.url_name == 'ai_page' %}active{% endif %}">
+                <span class="nav-icon">🔍</span>
+                Summarizes  Article
+            </a>
+        </div>
+        <div class="nav-item">
+            <!-- Corrected href: ensure you have a URL named 'history' in Django's urls.py -->
+            <a href="{% url 'Bies_detector' %}"
+               class="nav-link {% if request.resolver_match.url_name == 'history' %}active{% endif %}">
+                <span class="nav-icon"></span>
+                Bies Detector
+            </a>
+        </div>
+        <div class="nav-item">
+            <!-- Ensure 'saved_articles' URL name is defined in Django's urls.py -->
+            <a href="{% url 'fact' %}"
+               class="nav-link {% if request.resolver_match.url_name == 'saved_articles' %}active{% endif %}">
+                <span class="nav-icon">⭐</span>
+                fact Only 
+            </a>
+        </div>
+        <div class="nav-item">
+            <!-- Ensure 'settings' URL name is defined in Django's urls.py -->
+            
+        </div>
+        <div class="nav-item">
+            <!-- Ensure 'help' URL name is defined in Django's urls.py -->
+            
+        </div>
+    </nav>
+</aside>
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                <h1 class="page-title">Analyze Article</h1>
+            </div>
+            <div class="user-menu">
+                <span>Welcome, <strong>GLA</strong></span>
+                <div class="user-avatar"></div>
+                <a href="{% url 'home' %}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            <!-- Hero Section -->
+            <div class="analysis-hero">
+                <div class="hero-content">
+                    <h1 class="hero-title">AI-Powered News Analysis</h1>
+                    <p class="hero-subtitle">Get instant summaries and detect hidden biases in any news article. Just paste the URL and let our AI do the work.</p>
+                </div>
+            </div>
+
+            <!-- Input Section -->
+            <div class="input-section">
+                <div class="input-header">
+                    <h2 class="input-title">Enter Article URL</h2>
+                    <p class="input-subtitle">Paste the link to any news article you want to analyze</p>
+                </div>
+
+                <div class="url-input-container">
+                    <div class="url-input-group">
+                        <input
+                            type="url"
+                            class="url-input"
+                            placeholder="https://example.com/news-article..."
+                            id="articleUrl"
+                        >
+                        <button class="analyze-btn" onclick="analyzeArticle()" id="analyzeBtn">
+                            <span id="analyzeText">🔍 Analyze Now</span>
+                        </button>
+                    </div>
+
+                    <div class="sample-urls">
+                        <p class="sample-title">Or try one of these sample articles:</p>
+                        <div class="sample-links">
+                            <span class="sample-link" onclick="useSampleUrl(0)">📰 Climate Change Report</span>
+                            <span class="sample-link" onclick="useSampleUrl(1)">💰 Economic Analysis</span>
+                            <span class="sample-link" onclick="useSampleUrl(2)">🏥 Healthcare News</span>
+                            <span class="sample-link" onclick="useSampleUrl(3)">🚀 Technology Update</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section">
+                <div class="results-container" id="resultsContainer">
+                    <div class="empty-state">
+                        <div class="empty-icon">📄</div>
+                        <h3 class="empty-title">Ready to Analyze</h3>
+                        <p class="empty-subtitle">Enter a news article URL above to get started with AI-powered analysis</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Sample URLs for demo
+        const sampleUrls = [
+            "https://example.com/climate-change-report",
+            "https://example.com/economic-analysis-2025",
+            "https://example.com/healthcare-breakthrough",
+            "https://example.com/tech-innovation-news"
+        ];
+
+        // Mobile sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            const sidebar = document.getElementById('sidebar');
+            const menuBtn = document.querySelector('.mobile-menu-btn');
+
+            if (window.innerWidth <= 768 &&
+                !sidebar.contains(e.target) &&
+                !menuBtn.contains(e.target) &&
+                sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        // Removed the JavaScript for `nav-link` active state and `e.preventDefault()`.
+        // Django now handles setting the 'active' class on page load based on `request.resolver_match.url_name`.
+
+        // Use sample URL
+        function useSampleUrl(index) {
+            const urlInput = document.getElementById('articleUrl');
+            urlInput.value = sampleUrls[index];
+            urlInput.focus();
+        }
+
+        // Main analysis function
+        async function analyzeArticle() {
+            const urlInput = document.getElementById('articleUrl');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const analyzeText = document.getElementById('analyzeText');
+
+            if (!urlInput.value.trim()) {
+                alert('Please enter a valid article URL');
+                return;
+            }
+
+            // Show loading state
+            analyzeBtn.disabled = true;
+            analyzeText.innerHTML = '⏳ Analyzing...';
+            resultsContainer.className = 'results-container loading';
+            resultsContainer.innerHTML = `
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <h3 class="loading-text">Analyzing Article...</h3>
+                    <p class="loading-subtitle">Our AI is processing the content, detecting bias, and generating insights</p>
+                </div>
+            `;
+
+            // Simulate API processing time
+            await new Promise(resolve => setTimeout(resolve, 4000));
+
+            // Mock results based on URL pattern
+            const mockResults = generateMockResults(urlInput.value);
+
+            // Display results
+            resultsContainer.className = 'results-container has-results fade-in';
+            resultsContainer.innerHTML = createResultsHTML(mockResults);
+
+            // Reset button
+            analyzeBtn.disabled = false;
+            analyzeText.innerHTML = '🔍 Analyze Another';
+        }
+
+        // Generate mock results based on URL
+        function generateMockResults(url) {
+            const results = {
+                title: "Sample Article Analysis Results",
+                summary: "This comprehensive analysis reveals key insights from the article. The content discusses important developments with supporting evidence from multiple sources. The writing maintains a balanced perspective while presenting factual information and expert opinions on the subject matter.",
+                biasLevel: "low",
+                biasScore: 0.23,
+                keyPoints: [
+                    "Article presents multiple perspectives on the topic",
+                    "Sources are credible and properly cited throughout",
+                    "Language is neutral with minimal loaded terminology",
+                    "Facts are clearly distinguished from opinions"
+                ],
+                sourceCredibility: "High",
+                readingTime: "5 minutes"
+            };
+
+            // Vary results based on URL content
+            if (url.includes('climate')) {
+                results.title = "Climate Change Report Analysis";
+                results.summary = "This environmental report provides evidence-based analysis of current climate trends. The article cites peer-reviewed research and presents data from reputable scientific institutions, maintaining objectivity while discussing policy implications.";
+                results.biasLevel = "low";
+                results.biasScore = 0.18;
+            } else if (url.includes('economic')) {
+                results.title = "Economic Analysis Article";
+                results.summary = "The economic analysis presents market trends with supporting statistical data. While the article leans slightly toward optimistic projections, it acknowledges potential risks and includes contrasting expert viewpoints.";
+                results.biasLevel = "medium";
+                results.biasScore = 0.45;
+            } else if (url.includes('healthcare')) {
+                results.title = "Healthcare Breakthrough Report";
+                results.summary = "This medical news report covers recent healthcare developments with appropriate scientific context. The article properly cites medical studies and includes expert commentary from healthcare professionals.";
+                results.biasLevel = "low";
+                results.biasScore = 0.22;
+            } else if (url.includes('tech')) {
+                results.title = "Technology Innovation News";
+                results.summary = "The technology article discusses recent innovations with enthusiasm that may influence reader perception. While factually accurate, the language shows clear positive bias toward the featured technology companies.";
+                results.biasLevel = "medium";
+                results.biasScore = 0.52;
+            }
+
+            return results;
+        }
+
+        // Create results HTML
+        function createResultsHTML(results) {
+            const biasClass = results.biasLevel;
+            const biasEmoji = biasClass === 'low' ? '🟢' : biasClass === 'medium' ? '🟡' : '🔴';
+
+            return `
+                <div class="results-grid">
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-icon">📝</span>
+                            <h3 class="result-title">Article Summary</h3>
+                        </div>
+                        <div class="result-content">
+                            <p>${results.summary}</p>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-icon">🎯</span>
+                            <h3 class="result-title">Bias Analysis</h3>
+                        </div>
+                        <div class="result-content">
+                            <div class="bias-analysis">
+                                <span class="bias-indicator bias-${biasClass}">
+                                    ${biasEmoji} ${results.biasLevel.charAt(0).toUpperCase() + results.biasLevel.slice(1)} Bias
+                                </span>
+                                <span class="bias-score">Score: ${(results.biasScore * 100).toFixed(1)}%</span>
+                            </div>
+                            <p style="margin-top: 1rem;">
+                                ${biasClass === 'low' ? 'The article maintains good objectivity with balanced language and credible sources.' :
+                                  biasClass === 'medium' ? 'Some bias detected in language choice and framing, but overall fairly balanced.' :
+                                  'Significant bias detected in language, sourcing, or presentation of information.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-icon">🔑</span>
+                            <h3 class="result-title">Key Insights</h3>
+                        </div>
+                        <div class="result-content">
+                            <ul class="key-points-list">
+                                ${results.keyPoints.map(point => `<li>${point}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="result-actions">
+                        <button class="action-btn primary" onclick="saveAnalysis()">
+                            💾 Save Analysis
+                        </button>
+                        <button class="action-btn" onclick="shareAnalysis()">
+                            📤 Share Results
+                        </button>
+                        <button class="action-btn" onclick="exportAnalysis()">
+                            📊 Export Report
+                        </button>
+                        <button class="action-btn" onclick="analyzeAnother()">
+                            🔍 Analyze Another
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Action functions
+        function saveAnalysis() {
+            alert('Analysis saved to your history!');
+        }
+
+        function shareAnalysis() {
+            alert('Share functionality coming soon!');
+        }
+
+        function exportAnalysis() {
+            alert('Export feature coming soon!');
+        }
+
+        function analyzeAnother() {
+            const urlInput = document.getElementById('articleUrl');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const analyzeText = document.getElementById('analyzeText');
+
+            urlInput.value = '';
+            resultsContainer.className = 'results-container';
+            resultsContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📄</div>
+                    <h3 class="empty-title">Ready to Analyze</h3>
+                    <p class="empty-subtitle">Enter a news article URL above to get started with AI-powered analysis</p>
+                </div>
+            `;
+            analyzeText.innerHTML = '🔍 Analyze Now';
+        }
+    </script>
+</body>
+</html>
