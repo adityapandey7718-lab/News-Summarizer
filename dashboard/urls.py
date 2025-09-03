@@ -7,4 +7,5 @@ urlpatterns = [
     path("ai_page/",views.ai_page,name='ai_page'),
     path("bias_detector/",views.bias_detector,name='bias_detector'),
     path("fact/",views.fact,name="fact"),
+    path("analyze/",views.analyze_article,name="analyze_article"),
 ]

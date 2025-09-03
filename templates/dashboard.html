@@ -398,6 +398,29 @@
             color: var(--text-light);
         }
 
+        /* Error State */
+        .error-state {
+            text-align: center;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: var(--error-color);
+        }
+
+        .error-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--error-color);
+        }
+
+        .error-subtitle {
+            font-size: 1rem;
+            color: var(--text-light);
+        }
+
         /* Loading State */
         .loading-content {
             text-align: center;
@@ -727,17 +750,22 @@
                 </div>
 
                 <div class="url-input-container">
-                    <div class="url-input-group">
-                        <input
-                            type="url"
-                            class="url-input"
-                            placeholder="https://example.com/news-article..."
-                            id="articleUrl"
-                        >
-                        <button class="analyze-btn" onclick="analyzeArticle()" id="analyzeBtn">
-                            <span id="analyzeText">🔍 Analyze Now</span>
-                        </button>
-                    </div>
+                    <form method="POST" action="{% url 'analyze_article' %}">
+                        {% csrf_token %}
+                        <div class="url-input-group">
+                            <input
+                                type="url"
+                                class="url-input"
+                                placeholder="https://example.com/news-article..."
+                                id="articleUrl"
+                                name="articleUrl"
+                                required
+                            >
+                            <button class="analyze-btn" type="submit" id="analyzeBtn">
+                                <span id="analyzeText">🔍 Analyze Now</span>
+                            </button>
+                        </div>
+                    </form>
 
                     <div class="sample-urls">
                         <p class="sample-title">Or try one of these sample articles:</p>
@@ -753,6 +781,71 @@
 
             <!-- Results Section -->
             <div class="results-section">
+                {% if error %}
+                <div class="results-container">
+                    <div class="error-state">
+                        <div class="error-icon">⚠️</div>
+                        <h3 class="error-title">Error</h3>
+                        <p class="error-subtitle">{{ error }}</p>
+                    </div>
+                </div>
+                {% elif has_results %}
+                <div class="results-container has-results fade-in">
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <div class="result-header">
+                                <span class="result-icon">📝</span>
+                                <h3 class="result-title">Article Summary</h3>
+                            </div>
+                            <div class="result-content">
+                                <p>{{ summary }}</p>
+                            </div>
+                        </div>
+
+                        <div class="result-card">
+                            <div class="result-header">
+                                <span class="result-icon">🎯</span>
+                                <h3 class="result-title">Bias Analysis</h3>
+                            </div>
+                            <div class="result-content">
+                                <div class="bias-analysis">
+                                    {% if bias_score <= 0.3 %}
+                                        <span class="bias-indicator bias-low">
+                                            🟢 Low Bias
+                                        </span>
+                                    {% elif bias_score <= 0.6 %}
+                                        <span class="bias-indicator bias-medium">
+                                            🟡 Medium Bias
+                                        </span>
+                                    {% else %}
+                                        <span class="bias-indicator bias-high">
+                                            🔴 High Bias
+                                        </span>
+                                    {% endif %}
+                                    <span class="bias-score">Score: {{ bias_score|floatformat:1 }}%</span>
+                                </div>
+                                <p style="margin-top: 1rem;">{{ bias_analysis }}</p>
+                            </div>
+                        </div>
+
+                        <div class="result-card">
+                            <div class="result-header">
+                                <span class="result-icon">🔑</span>
+                                <h3 class="result-title">Key Facts</h3>
+                            </div>
+                            <div class="result-content">
+                                <p>{{ fact_analysis }}</p>
+                            </div>
+                        </div>
+
+                        <div class="result-actions">
+                            <button class="action-btn primary" onclick="analyzeAnother()">
+                                🔍 Analyze Another
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
                 <div class="results-container" id="resultsContainer">
                     <div class="empty-state">
                         <div class="empty-icon">📄</div>
@@ -760,6 +853,7 @@
                         <p class="empty-subtitle">Enter a news article URL above to get started with AI-powered analysis</p>
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
     </main>

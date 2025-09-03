@@ -1,10 +1,44 @@
 from django.shortcuts import render, redirect
 import requests
 import os
+from bs4 import BeautifulSoup
+import re
 
 
 # Store your API key safely (ideally use environment variables, not plain text)
 api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+
+def fetch_article_content(url):
+    """Fetch and extract article content from a given URL"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
+            script.decompose()
+        
+        # Extract text content
+        text = soup.get_text()
+        
+        # Clean up the text
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = ' '.join(chunk for chunk in chunks if chunk)
+        
+        # Limit text length to avoid token limits
+        if len(text) > 8000:
+            text = text[:8000] + "..."
+        
+        return text
+    except Exception as e:
+        print(f"Error fetching article: {str(e)}")
+        return None
 
 def dashboard_page(request):
     return render(request, 'dashboard.html')
@@ -335,3 +369,65 @@ Your comprehensive fact analysis:"""
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
         return f"Error: An unexpected error occurred: {str(e)}"
+
+def analyze_article(request):
+    """Handle article analysis from dashboard form"""
+    if request.method == "POST":
+        article_url = request.POST.get("articleUrl")
+        
+        if not article_url:
+            return render(request, "dashboard.html", {"error": "Please provide an article URL"})
+        
+        # Fetch article content
+        article_content = fetch_article_content(article_url)
+        
+        if not article_content:
+            return render(request, "dashboard.html", {"error": "Could not fetch article content. Please check the URL."})
+        
+        # Generate analysis using real article content
+        summary = generate_response(article_content)
+        bias_analysis = generate_response2(article_content)
+        fact_analysis = generate_response3(article_content)
+        
+        # Calculate bias score (simple heuristic based on response length and content)
+        bias_score = calculate_bias_score(bias_analysis)
+        
+        context = {
+            "article_url": article_url,
+            "summary": summary,
+            "bias_analysis": bias_analysis,
+            "fact_analysis": fact_analysis,
+            "bias_score": bias_score,
+            "has_results": True
+        }
+        
+        return render(request, "dashboard.html", context)
+    
+    return render(request, "dashboard.html")
+
+def calculate_bias_score(bias_analysis):
+    """Calculate a simple bias score based on analysis content"""
+    if not bias_analysis or "Error:" in bias_analysis:
+        return 0.5  # Default neutral score
+    
+    # Simple heuristic: look for bias indicators in the text
+    bias_indicators = {
+        'high': ['significant bias', 'strong bias', 'clear bias', 'obvious bias', 'heavy bias'],
+        'medium': ['some bias', 'moderate bias', 'partial bias', 'slight bias'],
+        'low': ['low bias', 'minimal bias', 'balanced', 'objective', 'neutral']
+    }
+    
+    analysis_lower = bias_analysis.lower()
+    
+    for level, indicators in bias_indicators.items():
+        for indicator in indicators:
+            if indicator in analysis_lower:
+                if level == 'high':
+                    return 0.7 + (hash(indicator) % 30) / 100  # 0.7-1.0
+                elif level == 'medium':
+                    return 0.4 + (hash(indicator) % 30) / 100  # 0.4-0.7
+                else:
+                    return 0.1 + (hash(indicator) % 30) / 100  # 0.1-0.4
+    
+    # Default to medium if no clear indicators
+    return 0.5
