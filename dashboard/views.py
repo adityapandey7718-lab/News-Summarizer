@@ -47,7 +47,7 @@ def dashboard_page(request):
 def ai_page(request):
     if request.method == "POST":
         query = request.POST.get("query")
-        response = generate_response(query)
+        response = clean_api_output(generate_response(query))
         parameters = {
             "response": response
         }
@@ -63,7 +63,7 @@ def generate_response(query):
     print(f"API Key available: {'Yes' if api_key else 'No'}")
     print(f"Query length: {len(query) if query else 0}")
 
-    prompt_template = """You are a professional news analyst AI. Create a comprehensive, well-structured summary of the following article. Follow these guidelines:
+    prompt_template = """You are a professional news analyst AI. Create a clean, well-structured summary of the following article. Follow these guidelines:
 
 1. **Format Requirements**:
    - Begin with a 2-3 sentence overview
@@ -71,6 +71,7 @@ def generate_response(query):
    - Group related points under subheadings
    - Provide detailed explanations, not just brief points
    - Maintain neutral, factual tone
+   - Use **bold** for important terms, names, and key concepts
 
 2. **Content Structure**:
    **Overview**: [Provide a comprehensive summary of the main points]
@@ -96,6 +97,8 @@ def generate_response(query):
    - Add context and background information
    - Explain why each point is important
    - Aim for a detailed, informative summary
+   - Use **bold** formatting for emphasis on key terms
+   - Keep formatting clean and professional
 
 Article to summarize:
 {user_input}
@@ -159,7 +162,7 @@ Your detailed summary:"""
 def bias_detector(request):  # Renamed from Bies_detector
     if request.method == "POST":
         query2 = request.POST.get("query2")
-        response = generate_response2(query2)
+        response = clean_api_output(generate_response2(query2))
         parameters = {
             "response": response
         }
@@ -176,7 +179,7 @@ def generate_response2(query2):
     print(f"API Key available: {'Yes' if api_key else 'No'}")
     print(f"Query length: {len(query2) if query2 else 0}")
 
-    prompt_template = """Act as a professional article analyzer and provide a comprehensive bias detection analysis. Give detailed, thorough analysis in point-wise format:
+    prompt_template = """Act as a professional article analyzer and provide a clean, comprehensive bias detection analysis. Give detailed, thorough analysis in point-wise format:
 
 1. **Bias Detection Analysis**:
    - Identify and explain potential biases in the content with specific examples
@@ -204,6 +207,12 @@ def generate_response2(query2):
    - Summarize the main biases detected
    - Provide recommendations for balanced reading
    - Explain the potential impact on reader understanding
+
+**Formatting Guidelines**:
+- Use **bold** for key terms, bias levels, and important findings
+- Keep bullet points clean and professional
+- Avoid unnecessary punctuation or formatting
+- Use clear, concise language
 
 Article to analyze:
 {user_input}
@@ -266,7 +275,7 @@ Your comprehensive bias analysis:"""
 def fact(request):
     if request.method == "POST":
         query3 = request.POST.get("query3")
-        response = generate_response3(query3)
+        response = clean_api_output(generate_response3(query3))
         parameters = {
             "response": response
         }
@@ -283,7 +292,7 @@ def generate_response3(query3):
     print(f"API Key available: {'Yes' if api_key else 'No'}")
     print(f"Query length: {len(query3) if query3 else 0}")
 
-    prompt_template = """Act as a professional data analyst and provide a comprehensive fact extraction analysis. Give detailed, thorough analysis of the important facts in the article:
+    prompt_template = """Act as a professional data analyst and provide a clean, comprehensive fact extraction analysis. Give detailed, thorough analysis of the important facts in the article:
 
 1. **Key Facts Identification**:
    - Extract and explain the most important factual information
@@ -311,6 +320,13 @@ def generate_response3(query3):
    - Organize facts by importance and relevance
    - Highlight any contradictions or inconsistencies
    - Provide recommendations for further fact-checking
+
+**Formatting Guidelines**:
+- Use **bold** for key facts, numbers, dates, and important terms
+- Keep bullet points clean and professional
+- Avoid unnecessary punctuation or formatting
+- Use clear, concise language
+- Highlight statistics and data points in **bold**
 
 Article to analyze:
 {user_input}
@@ -385,9 +401,9 @@ def analyze_article(request):
             return render(request, "dashboard.html", {"error": "Could not fetch article content. Please check the URL."})
         
         # Generate analysis using real article content
-        summary = generate_response(article_content)
-        bias_analysis = generate_response2(article_content)
-        fact_analysis = generate_response3(article_content)
+        summary = clean_api_output(generate_response(article_content))
+        bias_analysis = clean_api_output(generate_response2(article_content))
+        fact_analysis = clean_api_output(generate_response3(article_content))
         
         # Calculate bias score (simple heuristic based on response length and content)
         bias_score = calculate_bias_score(bias_analysis)
@@ -431,3 +447,27 @@ def calculate_bias_score(bias_analysis):
     
     # Default to medium if no clear indicators
     return 0.5
+
+def clean_api_output(text):
+    """Clean up API output by removing unnecessary characters and ensuring proper formatting"""
+    if not text:
+        return text
+    
+    # Remove extra whitespace and newlines
+    text = re.sub(r'\n\s*\n', '\n\n', text)
+    text = re.sub(r' +', ' ', text)
+    
+    # Clean up bullet points
+    text = re.sub(r'^[-*•]\s*', '• ', text, flags=re.MULTILINE)
+    
+    # Remove excessive punctuation
+    text = re.sub(r'[.!]{3,}', '...', text)
+    text = re.sub(r'[?!]{2,}', '?', text)
+    
+    # Ensure proper spacing around bold text
+    text = re.sub(r'\*\*([^*]+)\*\*', r'**\1**', text)
+    
+    # Remove any remaining unnecessary characters
+    text = text.strip()
+    
+    return text
