@@ -82,7 +82,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Bies Detector</h1>
+        <h1>Bias Detector</h1>
         
         {% if error %}
         <div class="error">
@@ -94,7 +94,7 @@
             {% csrf_token %}
             
             <div class="input-area">
-                <label for="prompt"><strong>Enter your artical:</strong></label>
+                <label for="prompt"><strong>Enter your article:</strong></label>
                 <textarea id="prompt" name="query2" required placeholder="Type your question or instruction here..."></textarea>
             </div>
             

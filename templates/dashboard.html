@@ -670,11 +670,10 @@
             </a>
         </div>
         <div class="nav-item">
-            <!-- Corrected href: ensure you have a URL named 'history' in Django's urls.py -->
-            <a href="{% url 'Bies_detector' %}"
-               class="nav-link {% if request.resolver_match.url_name == 'history' %}active{% endif %}">
+            <a href="{% url 'bias_detector' %}"
+               class="nav-link {% if request.resolver_match.url_name == 'bias_detector' %}active{% endif %}">
                 <span class="nav-icon"></span>
-                Bies Detector
+                Bias Detector
             </a>
         </div>
         <div class="nav-item">

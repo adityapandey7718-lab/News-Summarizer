@@ -1,9 +1,10 @@
 from django.shortcuts import render, redirect
 import requests
+import os
 
 
 # Store your API key safely (ideally use environment variables, not plain text)
-api_key = "AIzaSyAI1FtNX5ZCOHmzKRpgZM95kHq9EPOBwyE"
+api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
 def dashboard_page(request):
     return render(request, 'dashboard.html')
@@ -58,6 +59,9 @@ Your summary:"""+"query"
 
     full_prompt = prompt_template.format(user_input=query)
     
+    if not api_key:
+        return "Error: Missing API key. Please set GOOGLE_API_KEY in environment."
+
     api = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
     
     payload = {
@@ -89,7 +93,7 @@ Your summary:"""+"query"
         return f"Error: {response.text}"
     
 #---------------------Bies detector-------------------------------
-def Bies_detector(request):  # Changed from 'requests' to 'request'
+def bias_detector(request):  # Renamed from Bies_detector
     if request.method == "POST":
         query2 = request.POST.get("query2")
         response = generate_response2(query2)
@@ -127,6 +131,9 @@ Your analysis:"""
     
     full_prompt = prompt_template.format(user_input=query2)  # Changed from 'query' to 'query2'
     
+    if not api_key:
+        return "Error: Missing API key. Please set GOOGLE_API_KEY in environment."
+
     api = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
     
     payload = {
@@ -181,6 +188,9 @@ def generate_response3(query3):
     
     full_prompt = prompt_template.format(user_input=query3)
     
+    if not api_key:
+        return "Error: Missing API key. Please set GOOGLE_API_KEY in environment."
+
     api = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
     
     payload = {
