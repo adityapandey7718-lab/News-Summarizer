@@ -22,6 +22,13 @@ def ai_page(request):
     return render(request, 'asked_ai.html', {"response": None})
 
 def generate_response(query):
+    # Check API key first
+    if not api_key:
+        return "Error: Missing API key. Please set GOOGLE_API_KEY in environment."
+    
+    print(f"API Key available: {'Yes' if api_key else 'No'}")
+    print(f"Query length: {len(query) if query else 0}")
+
     prompt_template = """You are a professional news analyst AI. Create a comprehensive, well-structured summary of the following article. Follow these guidelines:
 
 1. **Format Requirements**:
@@ -62,18 +69,17 @@ Article to summarize:
 Your detailed summary:"""
 
     full_prompt = prompt_template.format(user_input=query)
+    print(f"Prompt length: {len(full_prompt)}")
     
-    if not api_key:
-        return "Error: Missing API key. Please set GOOGLE_API_KEY in environment."
-
-    api = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    print(f"API URL: {api_url[:50]}...")
     
     payload = {
         "contents": [
             {
                 "parts": [
                     {
-                        "text": full_prompt  # Using the formatted prompt with user input
+                        "text": full_prompt
                     }
                 ]
             }
@@ -83,18 +89,37 @@ Your detailed summary:"""
         "Content-Type": "application/json"
     }
 
-    response = requests.post(api, json=payload, headers=headers)
+    try:
+        print("Making API request...")
+        response = requests.post(api_url, json=payload, headers=headers, timeout=30)
+        print(f"Response Status: {response.status_code}")
 
-    print("Status Code:", response.status_code)  # Debugging
-
-    if response.status_code == 200:
-        data = response.json()
-        try:
-            return data["candidates"][0]["content"]["parts"][0]["text"]
-        except (KeyError, IndexError):
-            return "Error: Unexpected response format."
-    else:
-        return f"Error: {response.text}"
+        if response.status_code == 200:
+            data = response.json()
+            try:
+                result = data["candidates"][0]["content"]["parts"][0]["text"]
+                print(f"Success! Response length: {len(result)}")
+                return result
+            except (KeyError, IndexError) as e:
+                print(f"Error parsing response: {str(e)}")
+                return "Error: Unexpected response format."
+        else:
+            error_msg = response.text if response.text else "No error details provided"
+            print(f"API Error {response.status_code}: {error_msg}")
+            return f"Error: API request failed with status {response.status_code}. Details: {error_msg}"
+            
+    except requests.exceptions.Timeout:
+        print("Request timed out after 30 seconds")
+        return "Error: Request timed out. The API service is taking too long to respond."
+    except requests.exceptions.ConnectionError as e:
+        print(f"Connection error: {str(e)}")
+        return "Error: Cannot connect to the API service. Please check your internet connection."
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {str(e)}")
+        return f"Error: Failed to connect to the API service. Details: {str(e)}"
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return f"Error: An unexpected error occurred: {str(e)}"
     
 #---------------------Bies detector-------------------------------
 def bias_detector(request):  # Renamed from Bies_detector
@@ -110,7 +135,12 @@ def bias_detector(request):  # Renamed from Bies_detector
 
 #---------------------generative ----------------------------
 def generate_response2(query2):
-
+    # Check API key first
+    if not api_key:
+        return "Error: Missing API key. Please set GOOGLE_API_KEY in environment."
+    
+    print(f"API Key available: {'Yes' if api_key else 'No'}")
+    print(f"Query length: {len(query2) if query2 else 0}")
 
     prompt_template = """Act as a professional article analyzer and provide a comprehensive bias detection analysis. Give detailed, thorough analysis in point-wise format:
 
@@ -146,12 +176,11 @@ Article to analyze:
 
 Your comprehensive bias analysis:"""
     
-    full_prompt = prompt_template.format(user_input=query2)  # Changed from 'query' to 'query2'
+    full_prompt = prompt_template.format(user_input=query2)
+    print(f"Prompt length: {len(full_prompt)}")
     
-    if not api_key:
-        return "Error: Missing API key. Please set GOOGLE_API_KEY in environment."
-
-    api = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    print(f"API URL: {api_url[:50]}...")
     
     payload = {
         "contents": [
@@ -169,24 +198,36 @@ Your comprehensive bias analysis:"""
     }
 
     try:
-        response = requests.post(api, json=payload, headers=headers, timeout=10)
-        print("Status Code:", response.status_code)
+        print("Making API request...")
+        response = requests.post(api_url, json=payload, headers=headers, timeout=30)
+        print(f"Response Status: {response.status_code}")
 
         if response.status_code == 200:
             data = response.json()
             try:
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+                result = data["candidates"][0]["content"]["parts"][0]["text"]
+                print(f"Success! Response length: {len(result)}")
+                return result
             except (KeyError, IndexError) as e:
                 print(f"Error parsing response: {str(e)}")
                 return "Error: Could not process the API response format."
         else:
             error_msg = response.text if response.text else "No error details provided"
             print(f"API Error {response.status_code}: {error_msg}")
-            return f"Error: API request failed with status {response.status_code}"
+            return f"Error: API request failed with status {response.status_code}. Details: {error_msg}"
             
+    except requests.exceptions.Timeout:
+        print("Request timed out after 30 seconds")
+        return "Error: Request timed out. The API service is taking too long to respond."
+    except requests.exceptions.ConnectionError as e:
+        print(f"Connection error: {str(e)}")
+        return "Error: Cannot connect to the API service. Please check your internet connection."
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {str(e)}")
-        return f"Error: Failed to connect to the API service"
+        return f"Error: Failed to connect to the API service. Details: {str(e)}"
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return f"Error: An unexpected error occurred: {str(e)}"
 #------------------------def-fact------------------------------------
 def fact(request):
     if request.method == "POST":
@@ -201,6 +242,13 @@ def fact(request):
 
 #----------------------generative_3-----------------
 def generate_response3(query3):
+    # Check API key first
+    if not api_key:
+        return "Error: Missing API key. Please set GOOGLE_API_KEY in environment."
+    
+    print(f"API Key available: {'Yes' if api_key else 'No'}")
+    print(f"Query length: {len(query3) if query3 else 0}")
+
     prompt_template = """Act as a professional data analyst and provide a comprehensive fact extraction analysis. Give detailed, thorough analysis of the important facts in the article:
 
 1. **Key Facts Identification**:
@@ -236,11 +284,10 @@ Article to analyze:
 Your comprehensive fact analysis:"""
     
     full_prompt = prompt_template.format(user_input=query3)
+    print(f"Prompt length: {len(full_prompt)}")
     
-    if not api_key:
-        return "Error: Missing API key. Please set GOOGLE_API_KEY in environment."
-
-    api = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    print(f"API URL: {api_url[:50]}...")
     
     payload = {
         "contents": [
@@ -258,21 +305,33 @@ Your comprehensive fact analysis:"""
     }
 
     try:
-        response = requests.post(api, json=payload, headers=headers, timeout=10)
-        print("Status Code:", response.status_code)
+        print("Making API request...")
+        response = requests.post(api_url, json=payload, headers=headers, timeout=30)
+        print(f"Response Status: {response.status_code}")
 
         if response.status_code == 200:
             data = response.json()
             try:
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+                result = data["candidates"][0]["content"]["parts"][0]["text"]
+                print(f"Success! Response length: {len(result)}")
+                return result
             except (KeyError, IndexError) as e:
                 print(f"Error parsing response: {str(e)}")
                 return "Error: Could not process the API response format."
         else:
             error_msg = response.text if response.text else "No error details provided"
             print(f"API Error {response.status_code}: {error_msg}")
-            return f"Error: API request failed with status {response.status_code}"
+            return f"Error: API request failed with status {response.status_code}. Details: {error_msg}"
             
+    except requests.exceptions.Timeout:
+        print("Request timed out after 30 seconds")
+        return "Error: Request timed out. The API service is taking too long to respond."
+    except requests.exceptions.ConnectionError as e:
+        print(f"Connection error: {str(e)}")
+        return "Error: Cannot connect to the API service. Please check your internet connection."
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {str(e)}")
-        return f"Error: Failed to connect to the API service"
+        return f"Error: Failed to connect to the API service. Details: {str(e)}"
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return f"Error: An unexpected error occurred: {str(e)}"
